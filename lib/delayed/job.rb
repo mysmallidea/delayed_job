@@ -43,7 +43,7 @@ module Delayed
     alias_method :failed, :failed?
     
     def status
-      failed? ? 'failed' : 'pending'
+      super or (failed? ? 'failed' : 'pending')
     end
 
     def payload_object
