@@ -5,6 +5,16 @@ class SimpleJob
   def perform; @@runs += 1; end
 end
 
+class ComplexJob < Struct.new(:text, :job_id)
+  cattr_accessor :runs; self.runs = 0
+  def perform
+    @@runs += 1
+    Delayed::Status.update(job_id, "foobar")
+    
+    fail
+  end    
+end
+
 describe Delayed::Job do
   before  do               
     Delayed::Job.max_priority = nil
@@ -38,6 +48,13 @@ describe Delayed::Job do
       @job = Delayed::Job.enqueue SimpleJob.new
       Delayed::Status.update(@job.id, "almost done")
       Delayed::Status.get(@job.id).should == "almost done"
+    end
+    
+    it "should be able to update its own status" do
+      @job = Delayed::Job.enqueue ComplexJob.new
+      Delayed::Job.work_off
+      
+      Delayed::Status.get(@job.id).should == "foobar"
     end
   end
   

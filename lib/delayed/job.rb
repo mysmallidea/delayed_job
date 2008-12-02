@@ -137,7 +137,7 @@ module Delayed
           logger.info "* [JOB] aquiring lock on #{job.name}"
           job.lock_exclusively!(max_run_time, worker_name)
           runtime =  Benchmark.realtime do
-            invoke_job(job.payload_object, &block)
+            invoke_job(job.id, job.payload_object, &block)
             job.destroy
           end
           logger.info "* [JOB] #{job.name} completed after %.4f" % runtime
@@ -208,7 +208,9 @@ module Delayed
     
     
     # Moved into its own method so that new_relic can trace it.
-    def self.invoke_job(job, &block)
+    def self.invoke_job(job_id, job, &block)
+      # inject id here?
+      job.job_id = job_id if job.respond_to?(:job_id)
       block.call(job)
     end
 
