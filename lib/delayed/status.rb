@@ -5,14 +5,13 @@ module Delayed
     
     class << self
       def get(id)
-        Delayed::Job.find(id).status
+        Delayed::Job.find(id, :select => "id, status, failed_at").status
       rescue ActiveRecord::RecordNotFound 
         "finished"
       end
 
       def update(id, status)
-        job = Delayed::Job.find(id)
-        job.update_attribute(:status, status)
+        Delayed::Job.update(id, {:status => status})
       rescue ActiveRecord::RecordNotFound 
         false
       end

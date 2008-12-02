@@ -31,7 +31,6 @@ describe Delayed::Job do
       @job = Delayed::Job.create :payload_object => SimpleJob.new, :attempts => 50, :failed_at => Time.now
       Delayed::Status.get(@job.id).should == "failed"
     end
-    
   end
   
   context "update" do
