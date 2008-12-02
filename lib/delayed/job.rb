@@ -43,7 +43,7 @@ module Delayed
     alias_method :failed, :failed?
     
     def status
-      failed? ? 'failed' : 'pending'
+      super or (failed? ? 'failed' : 'pending')
     end
 
     def payload_object
@@ -80,12 +80,23 @@ module Delayed
       end
     end
 
-    def self.enqueue(object, priority = 0, run_at = nil)
-      unless object.respond_to?(:perform)
-        raise ArgumentError, 'Cannot enqueue items which do not respond to perform'
-      end
+    def self.enqueue(*args, &block)
+      if block_given?
+        priority = args.first || 0
+        run_at   = args.second
+        
+        Job.create(:payload_object => EvaledJob.new(&block), :priority => priority.to_i, :run_at => run_at)
+      else
+        object   = args.first
+        priority = args.second || 0
+        run_at   = args.third
+        
+        unless object.respond_to?(:perform)
+          raise ArgumentError, 'Cannot enqueue items which do not respond to perform'
+        end
 
-      Job.create(:payload_object => object, :priority => priority.to_i, :run_at => run_at)
+        Job.create(:payload_object => object, :priority => priority.to_i, :run_at => run_at)
+      end
     end
 
     def self.find_available(limit = 5, max_run_time = MAX_RUN_TIME)
@@ -126,7 +137,7 @@ module Delayed
           logger.info "* [JOB] aquiring lock on #{job.name}"
           job.lock_exclusively!(max_run_time, worker_name)
           runtime =  Benchmark.realtime do
-            invoke_job(job.payload_object, &block)
+            invoke_job(job.id, job.payload_object, &block)
             job.destroy
           end
           logger.info "* [JOB] #{job.name} completed after %.4f" % runtime
@@ -197,7 +208,9 @@ module Delayed
     
     
     # Moved into its own method so that new_relic can trace it.
-    def self.invoke_job(job, &block)
+    def self.invoke_job(delayed_job_id, job, &block)
+      # inject id here?
+      job.delayed_job_id = delayed_job_id if job.respond_to?(:delayed_job_id)
       block.call(job)
     end
 
@@ -257,5 +270,15 @@ module Delayed
       self.run_at ||= self.class.db_time_now
     end
 
+  end
+
+  class EvaledJob
+    def initialize
+      @job = yield
+    end
+
+    def perform
+      eval(@job)
+    end
   end
 end
