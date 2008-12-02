@@ -208,9 +208,9 @@ module Delayed
     
     
     # Moved into its own method so that new_relic can trace it.
-    def self.invoke_job(job_id, job, &block)
+    def self.invoke_job(delayed_job_id, job, &block)
       # inject id here?
-      job.job_id = job_id if job.respond_to?(:job_id)
+      job.delayed_job_id = delayed_job_id if job.respond_to?(:delayed_job_id)
       block.call(job)
     end
 

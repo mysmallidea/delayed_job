@@ -5,11 +5,11 @@ class SimpleJob
   def perform; @@runs += 1; end
 end
 
-class ComplexJob < Struct.new(:text, :job_id)
+class ComplexJob < Struct.new(:text, :delayed_job_id)
   cattr_accessor :runs; self.runs = 0
   def perform
     @@runs += 1
-    Delayed::Status.update(job_id, "foobar")
+    Delayed::Status.set(delayed_job_id, "status set from within perform method")
     
     fail
   end    
@@ -43,18 +43,22 @@ describe Delayed::Job do
     end
   end
   
-  context "update" do
-    it "should update the job's status" do
+  context "set" do
+    it "should set the job's status" do
       @job = Delayed::Job.enqueue SimpleJob.new
-      Delayed::Status.update(@job.id, "almost done")
+      Delayed::Status.set(@job.id, "almost done")
       Delayed::Status.get(@job.id).should == "almost done"
     end
     
-    it "should be able to update its own status" do
+    it "should return false if the job is not found" do
+      Delayed::Status.set(12345, "almost done").should be_false
+    end
+    
+    it "should be able to set its own status" do
       @job = Delayed::Job.enqueue ComplexJob.new
       Delayed::Job.work_off
       
-      Delayed::Status.get(@job.id).should == "foobar"
+      Delayed::Status.get(@job.id).should == "status set from within perform method"
     end
   end
   

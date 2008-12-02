@@ -10,7 +10,7 @@ module Delayed
         "finished"
       end
 
-      def update(id, status)
+      def set(id, status)
         Delayed::Job.update(id, {:status => status})
       rescue ActiveRecord::RecordNotFound 
         false
