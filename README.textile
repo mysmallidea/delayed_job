@@ -13,7 +13,8 @@ It is a direct extraction from Shopify where the job table is responsible for a 
 * spam checks 
 
 h2. Changes
-                                            
+
+* 1.8 Added status column and the ability to query a job's status and set a job's status to an arbitrary value. 
 * 1.7 Added failed_at column which can optionally be set after a certain amount of failed job attempts. By default failed job attempts are destroyed after about a month. 
 * 1.6 Renamed locked_until to locked_at. We now store when we start a given job instead of how long it will be locked by the worker. This allows us to get a reading on how long a job took to execute.                    
 * 1.5 Job runners can now be run in parallel. Two new database columns are needed: locked_until and locked_by. This allows us to use pessimistic locking, which enables us to run as many worker processes as we need to speed up queue processing.
@@ -32,6 +33,7 @@ The library evolves around a delayed_jobs table which looks as follows:
     table.datetime :locked_at
     table.datetime :failed_at
     table.string   :locked_by
+    table.string   :status
     table.timestamps
   end
   
@@ -74,3 +76,21 @@ You can also run by writing a simple @script/job_runner@, and invoking it extern
 h3. Cleaning up
 
 You can invoke @rake jobs:clear@ to delete all jobs in the queue.
+
+
+h2. Job Status
+
+To get the status of a job, invoke @Delayed::Status.get(1)@. By default, the status will be one of "pending", "finished", or "failed". 
+
+You can set the status of a job to any arbitrary text value by invoking @Delayed::Status.set(1, "working on it")@. 
+
+If you provide a @delayed_job_id@ in your object, then you can access the job's status from inside the #perform action. This is useful for long-running tasks where you might want to update the status periodically. 
+
+class NewsletterJob < Struct.new(:text, :emails, :delayed_job_id)
+  def perform
+    emails.each do |e|
+      NewsletterMailer.deliver_text_to_email(text, e)
+      Delayed::Status.set(delayed_job_id, "still going...")
+    end
+  end
+end
