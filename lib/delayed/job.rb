@@ -41,6 +41,10 @@ module Delayed
       failed_at
     end
     alias_method :failed, :failed?
+    
+    def status
+      failed? ? 'failed' : 'pending'
+    end
 
     def payload_object
       @payload_object ||= deserialize(self['handler'])

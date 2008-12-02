@@ -145,6 +145,32 @@ describe Delayed::Job do
     Delayed::Job.find_available(1).length.should == 0
   end
 
+  it "should return the job's id when enqueueing" do
+    @job = Delayed::Job.enqueue SimpleJob.new
+    @job.id.should_not be_blank
+  end
+  
+  it "should find by id" do
+    @job = Delayed::Job.enqueue SimpleJob.new
+    Delayed::Job.find(@job.id).should == @job
+  end
+  
+  it "should return a pending status" do
+    @job = Delayed::Job.enqueue SimpleJob.new
+    @job.status.should == 'pending'
+  end
+  
+  it "should return a failed status" do
+    @job = Delayed::Job.create :payload_object => SimpleJob.new, :attempts => 50, :failed_at => Time.now
+    @job.status.should == 'failed'
+  end
+  
+  it "should not find a completed job" do
+    @job = Delayed::Job.enqueue SimpleJob.new
+    Delayed::Job.work_off
+    lambda{Delayed::Job.find(@job.id)}.should raise_error(ActiveRecord::RecordNotFound)
+  end
+
   context "when another worker is already performing an task, it" do
 
     before :each do
